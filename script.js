@@ -15,6 +15,7 @@ const videosData = [
     { name: "D8 250324", link: "https://youtu.be/EHGRZwbTwso" },
     { name: "D8 250325", link: "https://youtu.be/a2Vh3fHxAtE" },
     { name: "D8 250326", link: "https://youtu.be/RYRIS92a6SQ" },
+    { name: "D9 250331", link: "https://youtu.be/HnXZ6HjfQsQ" },
     // { name: "", link: "" },
   ];
   
