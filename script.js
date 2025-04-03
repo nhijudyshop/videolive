@@ -76,8 +76,9 @@ const videosData = [
                     <h3>Đợt Live ${index + 4}</h3>
                     <div class="row">`;
         group.forEach(function(video) {
+          if (!video.link) return; // Bỏ qua nếu không có link
           html += `
-            <div class="col-md-3 mb-3">
+            <div class="col-sm-6 col-md-3 mb-3">
               <div class="card">
                 ${getEmbedHtml(video.link)}
                 <div class="card-body">
