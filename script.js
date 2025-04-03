@@ -17,7 +17,7 @@ const videosData = [
     { name: "D8 250326", link: "https://youtu.be/RYRIS92a6SQ" },
     { name: "D9 250331", link: "https://youtu.be/HnXZ6HjfQsQ" },
     { name: "D9 250401", link: "https://youtu.be/zTFJ3KeDaaU" },
-    { name: "", link: "" },
+    { name: "Không có phiên live", link: "" },
     
     // { name: "", link: "" },
   ];
