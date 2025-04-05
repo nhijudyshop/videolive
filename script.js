@@ -254,4 +254,18 @@ $(document).ready(async function () {
     modal.show();
   };
   
+  $('#passwordInput').on('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      $('#confirmPasswordBtn').click();
+    }
+  });
+  
+  $('#deletePasswordInput').on('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      $('#confirmDeleteBtn').click();
+    }
+  });
+  
 });
