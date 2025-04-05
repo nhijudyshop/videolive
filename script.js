@@ -144,7 +144,7 @@ $(document).ready(async function () {
   if (now.getHours() >= 18) document.body.classList.add('eye-protection');
 
   let inactivityTimer;
-  const INACTIVITY_LIMIT = 30 * 1000;
+  // const INACTIVITY_LIMIT = 30 * 1000;
 
   function startInactivityTimer() {
     clearTimeout(inactivityTimer);
@@ -267,5 +267,25 @@ $(document).ready(async function () {
       $('#confirmDeleteBtn').click();
     }
   });
+
+  // 🚨 Theo dõi hoạt động của người dùng (idle 90s sẽ auto ẩn + khóa form)
+const INACTIVITY_LIMIT = 90 * 1000;
+
+function resetInactivityTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(() => {
+    $('#addVideoWrapper').slideUp(200);
+    $('#toggleFormBtn').html('➕ Hiển thị Form Thêm Video');
+    window.formAllowed = false;
+  }, INACTIVITY_LIMIT);
+}
+
+// 👂 Reset lại timer mỗi khi có hành vi tương tác
+$(document).on('mousemove keydown click scroll', () => {
+  if ($('#addVideoWrapper').is(':visible') && window.formAllowed) {
+    resetInactivityTimer();
+  }
+});
+
   
 });
