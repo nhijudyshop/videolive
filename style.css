@@ -3,10 +3,12 @@
   #addVideoForm label {
     font-size: 0.85rem;
   }
+
   #addVideoForm input {
     font-size: 0.9rem;
     padding: 0.4rem 0.5rem;
   }
+
   #addVideoForm button {
     font-size: 1rem;
     padding: 6px 16px;
@@ -37,7 +39,7 @@
   border: 1px solid #dee2e6;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 0 10px rgba(0,0,0,0.05);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s;
 }
 
@@ -58,13 +60,13 @@ h3 {
 }
 
 #addVideoForm button.btn-outline-primary:hover {
-  background-color: #198754 !important; /* Bootstrap xanh lá cây */
+  background-color: #198754 !important;
   color: #fff;
   border-color: #198754;
 }
 
 #addVideoForm button.btn-outline-primary {
-  font-size: 1.4rem; /* Tăng size cho emoji */
+  font-size: 1.4rem;
   padding: 6px 10px;
   line-height: 1;
   text-align: center;
@@ -72,7 +74,7 @@ h3 {
 
 .video-slider {
   display: flex;
-  justify-content: center; /* căn giữa khi không tràn */
+  justify-content: center;
   flex-wrap: wrap;
   gap: 20px;
   padding-bottom: 10px;
@@ -84,6 +86,7 @@ h3 {
 .video-slider::-webkit-scrollbar {
   height: 6px;
 }
+
 .video-slider::-webkit-scrollbar-thumb {
   background: #dee2e6;
   border-radius: 10px;
@@ -106,22 +109,137 @@ h3 {
   }
 }
 
-.btn-delete {
-  display: block;
-  margin: 0 auto;
-  padding: 5px 10px;
+/* Nút Sửa & Xoá */
+.btn-delete,
+.btn-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
   font-size: 0.9rem;
-  color: #212529;
-  background-color: #e2e3e5; /* Xám nhạt */
-  border: none;
+  padding: 6px 12px;
   border-radius: 4px;
+  gap: 6px;
   transition: all 0.2s ease;
+  border: none;
+}
+
+/* Nút Sửa */
+.btn-edit {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.btn-edit:hover {
+  background-color: #e0a800;
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* Nút Xoá */
+.btn-delete {
+  background-color: #e2e3e5;
+  color: #212529;
 }
 
 .btn-delete:hover {
-  background-color: #dc3545; /* đỏ */
+  background-color: #dc3545;
   color: #fff;
   font-weight: bold;
-  transform: scale(1.1)
+  transform: scale(1.1);
 }
 
+/* Modal */
+.modal-content {
+  border-radius: 12px;
+}
+
+.modal-body input {
+  font-size: 1.1rem;
+}
+
+/* Giao diện ban đêm - chống ánh sáng xanh */
+.eye-protection {
+  background-color: #1c1c2a !important;
+  color: #cfd8dc !important;
+}
+
+/* Không áp dụng eye-protection cho các vùng quan trọng */
+.eye-protection #addVideoForm,
+.eye-protection #addVideoForm input,
+.eye-protection #addVideoForm label,
+.eye-protection #addVideoForm button,
+.eye-protection .modal-content,
+.eye-protection .modal-body input {
+  background-color: #fff !important;
+  color: #212529 !important;
+  border-color: #ced4da !important;
+}
+
+.eye-protection #addVideoForm input::placeholder {
+  color: #6c757d !important;
+}
+
+.eye-protection .card {
+  background-color: #263238;
+  border-color: #37474f;
+  color: #cfd8dc;
+}
+
+.eye-protection input,
+.eye-protection textarea,
+.eye-protection .form-control {
+  background-color: #37474f;
+  color: #fff;
+  border-color: #455a64;
+}
+
+.eye-protection h1,
+.eye-protection h2,
+.eye-protection h3,
+.eye-protection label {
+  color: #90caf9 !important;
+}
+
+/* Rung modal khi sai */
+@keyframes shake {
+  0% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-5px);
+  }
+
+  50% {
+    transform: translateX(5px);
+  }
+
+  75% {
+    transform: translateX(-5px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.shake {
+  animation: shake 0.4s ease;
+}
+
+
+/* Ngăn modal bị ảnh hưởng bởi giao diện eye-protection */
+.modal-content,
+.modal-header,
+.modal-footer,
+.modal-body {
+  background-color: #fff !important;
+  color: #212529 !important;
+}
+
+.modal input {
+  background-color: #f8f9fa !important;
+  color: #212529 !important;
+  border: 1px solid #ced4da !important;
+}
