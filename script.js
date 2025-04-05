@@ -1,11 +1,36 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBK16HYueTw9dPDZd_v5dy7feIjS7O3ZGI",
+  authDomain: "videolive-8b601.firebaseapp.com",
+  projectId: "videolive-8b601",
+  storageBucket: "videolive-8b601.appspot.com",
+  messagingSenderId: "1049405068932",
+  appId: "1:1049405068932:web:95835c5720d486fd8154d1",
+  measurementId: "G-5SYF46SZWR"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const videosCollection = collection(db, "videos");
+
 let videosData = [];
 
-if (localStorage.getItem('videosData')) {
-  videosData = JSON.parse(localStorage.getItem('videosData'));
-}
-
-function saveToLocalStorage() {
-  localStorage.setItem('videosData', JSON.stringify(videosData));
+async function fetchVideosFromFirebase() {
+  const snapshot = await getDocs(videosCollection);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
 }
 
 function getEmbedHtml(link) {
@@ -34,20 +59,22 @@ function getEmbedHtml(link) {
           </div>`;
 }
 
-function requestDelete(index) {
-  $('#deleteVideoIndex').val(index);
+function requestDelete(id) {
+  $('#deleteVideoIndex').val(id);
   $('#deletePasswordInput').val('');
   $('#deletePasswordError').addClass('d-none');
   const modal = new bootstrap.Modal(document.getElementById('deletePasswordModal'));
   modal.show();
 }
 
-function loadVideos() {
+async function loadVideos() {
+  videosData = await fetchVideosFromFirebase();
+
   const grouped = {};
-  videosData.forEach((video, index) => {
+  videosData.forEach((video) => {
     if (!video.link) return;
     if (!grouped[video.group]) grouped[video.group] = [];
-    grouped[video.group].push({ ...video, _index: index });
+    grouped[video.group].push(video);
   });
 
   const sortedGroups = Object.keys(grouped).sort((a, b) => Number(a) - Number(b));
@@ -65,8 +92,8 @@ function loadVideos() {
             <div class="card-body text-center">
               <p class="card-text">${video.name}</p>
               <div class="d-flex justify-content-center gap-2">
-                <button class="btn btn-sm btn-outline-warning" onclick="openEditModal(${video._index})">✏️ Sửa</button>
-                <button class="btn-delete" onclick="requestDelete(${video._index})">🗑 Xoá</button>
+                <button class="btn btn-sm btn-outline-warning" onclick="openEditModal('${video.id}')">✏️ Sửa</button>
+                <button class="btn-delete" onclick="requestDelete('${video.id}')">🗑 Xoá</button>
               </div>
             </div>
           </div>
@@ -88,12 +115,41 @@ function loadVideos() {
   }, 100);
 }
 
+window.openEditModal = function (id) {
+  const video = videosData.find(v => v.id === id);
+  if (!video) return;
+  $('#editVideoIndex').val(video.id);
+  $('#editVideoGroup').val(video.group);
+  $('#editVideoName').val(video.name);
+  $('#editVideoLink').val(video.link);
+  const editModal = new bootstrap.Modal(document.getElementById('editVideoModal'));
+  editModal.show();
+};
+
+window.saveVideoChanges = async function () {
+  const id = $('#editVideoIndex').val();
+  const newGroup = $('#editVideoGroup').val().trim();
+  const newName = $('#editVideoName').val().trim();
+
+  if (!newGroup || !newName) {
+    alert("Bạn chưa nhập đầy đủ thông tin!");
+    return;
+  }
+
+  await updateDoc(doc(db, "videos", id), {
+    group: newGroup,
+    name: newName
+  });
+
+  await loadVideos();
+  const editModal = bootstrap.Modal.getInstance(document.getElementById('editVideoModal'));
+  editModal.hide();
+};
+
 $(document).ready(function () {
   loadVideos();
 
   const PASSWORD = "nhi123";
-  const savedFormState = localStorage.getItem('formVisible');
-  const formAllowed = localStorage.getItem('formAllowed') === 'true';
 
   const now = new Date();
   if (now.getHours() >= 18) document.body.classList.add('eye-protection');
@@ -106,21 +162,12 @@ $(document).ready(function () {
     inactivityTimer = setTimeout(() => {
       $('#addVideoWrapper').slideUp(200);
       $('#toggleFormBtn').html('➕ Hiển thị Form Thêm Video');
-      localStorage.removeItem('formAllowed');
-      localStorage.setItem('formVisible', false);
     }, INACTIVITY_LIMIT);
-  }
-
-  if (formAllowed && savedFormState === 'true') {
-    $('#addVideoWrapper').show();
-    $('#toggleFormBtn').html('➖ Ẩn Form Thêm Video');
-    startInactivityTimer();
   }
 
   $('#toggleFormBtn').on('click', function () {
     const isVisible = $('#addVideoWrapper').is(':visible');
-    const allowed = localStorage.getItem('formAllowed') === 'true';
-    if (!allowed) {
+    if (!window.formAllowed) {
       const modal = new bootstrap.Modal(document.getElementById('passwordModal'));
       $('#passwordInput').val('');
       $('#passwordError').addClass('d-none');
@@ -130,7 +177,6 @@ $(document).ready(function () {
     const newState = !isVisible;
     $('#addVideoWrapper').slideToggle(200);
     $(this).html(newState ? '➖ Ẩn Form Thêm Video' : '➕ Hiển thị Form Thêm Video');
-    localStorage.setItem('formVisible', newState);
     if (newState) startInactivityTimer();
   });
 
@@ -144,15 +190,14 @@ $(document).ready(function () {
       setTimeout(() => modalContent.classList.remove('shake'), 500);
       return;
     }
-    localStorage.setItem('formAllowed', true);
-    localStorage.setItem('formVisible', true);
+    window.formAllowed = true;
     $('#toggleFormBtn').html('➖ Ẩn Form Thêm Video');
     $('#addVideoWrapper').slideDown(200);
     modal.hide();
     startInactivityTimer();
   });
 
-  $('#confirmDeleteBtn').on('click', function () {
+  $('#confirmDeleteBtn').on('click', async function () {
     const inputVal = $('#deletePasswordInput').val();
     const modal = bootstrap.Modal.getInstance(document.getElementById('deletePasswordModal'));
     if (inputVal !== PASSWORD) {
@@ -163,44 +208,37 @@ $(document).ready(function () {
       }, 500);
       return;
     }
-    const index = $('#deleteVideoIndex').val();
-    videosData.splice(index, 1);
-    saveToLocalStorage();
-    loadVideos();
+    const id = $('#deleteVideoIndex').val();
+    await deleteDoc(doc(db, "videos", id));
+    await loadVideos();
     modal.hide();
-  });
-
-  $('#passwordInput').on('keydown', function (e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      $('#confirmPasswordBtn').click();
-    }
   });
 
   $('#addVideoForm input').on('input', function () {
     startInactivityTimer();
   });
 
-  $('#addVideoForm').on('submit', function (e) {
+  $('#addVideoForm').on('submit', async function (e) {
     e.preventDefault();
     const name = $('#videoName').val().trim();
     const link = $('#videoLink').val().trim();
     const group = $('#videoGroup').val().trim();
-    if (!link || !group) {
+    if (!link || !group || !name) {
       alert("Bạn chưa nhập đầy đủ thông tin!");
       return;
     }
-    videosData.unshift({ name, link, group });
-    saveToLocalStorage();
+
+    await addDoc(videosCollection, { name, link, group });
     $('#videoName').val('');
     $('#videoLink').val('');
     $('#videoGroup').val('');
-    loadVideos();
+    await loadVideos();
     startInactivityTimer();
   });
 
-  $('#exportBtn').on('click', function () {
-    const blob = new Blob([JSON.stringify(videosData, null, 2)], { type: "application/json" });
+  $('#exportBtn').on('click', async function () {
+    const data = await fetchVideosFromFirebase();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -208,42 +246,4 @@ $(document).ready(function () {
     a.click();
     URL.revokeObjectURL(url);
   });
-
-  document.addEventListener('visibilitychange', function () {
-    if (document.hidden) {
-      localStorage.removeItem('formAllowed');
-      localStorage.setItem('formVisible', false);
-    }
-  });
 });
-
-// Mở Modal Sửa
-function openEditModal(index) {
-  const video = videosData[index];
-  $('#editVideoIndex').val(index);
-  $('#editVideoGroup').val(video.group);
-  $('#editVideoName').val(video.name);
-  $('#editVideoLink').val(video.link);
-  const editModal = new bootstrap.Modal(document.getElementById('editVideoModal'));
-  editModal.show();
-}
-
-// Lưu chỉnh sửa
-function saveVideoChanges() {
-  const index = $('#editVideoIndex').val();
-  const newGroup = $('#editVideoGroup').val().trim();
-  const newName = $('#editVideoName').val().trim();
-
-  if (!newGroup || !newName) {
-    alert("Bạn chưa nhập đầy đủ thông tin!");
-    return;
-  }
-
-  videosData[index].group = newGroup;
-  videosData[index].name = newName;
-  saveToLocalStorage();
-  loadVideos();
-
-  const editModal = bootstrap.Modal.getInstance(document.getElementById('editVideoModal'));
-  editModal.hide();
-}
