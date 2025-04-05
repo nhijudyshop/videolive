@@ -42,45 +42,51 @@ function requestDelete(index) {
   modal.show();
 }
 
-async function loadVideos() {
-  try {
-    const res = await fetch('videos.json');
-    const videos = await res.json();
+function loadVideos() {
+  const grouped = {};
+  videosData.forEach((video, index) => {
+    if (!video.link) return;
+    if (!grouped[video.group]) grouped[video.group] = [];
+    grouped[video.group].push({ ...video, _index: index });
+  });
 
-    // Sắp xếp & hiển thị như trước
-    const grouped = {};
-    videos.forEach((video, index) => {
-      if (!video.link) return;
-      if (!grouped[video.group]) grouped[video.group] = [];
-      grouped[video.group].push(video);
-    });
-
-    const sortedGroups = Object.keys(grouped).sort((a, b) => Number(a) - Number(b));
-    let html = '';
-    for (const group of sortedGroups) {
-      html += `<div class="mb-5">
-                 <h3 class="text-center">Đợt Live ${group}</h3>
-                 <div class="video-slider">`;
-      grouped[group].forEach(video => {
-        html += `
-          <div class="video-card">
-            <div class="card h-100">
-              ${getEmbedHtml(video.link)}
-              <div class="card-body text-center">
-                <p class="card-text">${video.name}</p>
+  const sortedGroups = Object.keys(grouped).sort((a, b) => Number(a) - Number(b));
+  let html = '';
+  for (const group of sortedGroups) {
+    html += `<div class="mb-5">
+               <h3 class="text-center">Đợt Live ${group}</h3>
+               <div class="video-slider">`;
+    grouped[group].sort((a, b) => a.name.localeCompare(b.name));
+    grouped[group].forEach(video => {
+      html += `
+        <div class="video-card">
+          <div class="card h-100">
+            ${getEmbedHtml(video.link)}
+            <div class="card-body text-center">
+              <p class="card-text">${video.name}</p>
+              <div class="d-flex justify-content-center gap-2">
+                <button class="btn btn-sm btn-outline-warning" onclick="openEditModal(${video._index})">✏️ Sửa</button>
+                <button class="btn-delete" onclick="requestDelete(${video._index})">🗑 Xoá</button>
               </div>
             </div>
-          </div>`;
-      });
-      html += `</div></div>`;
-    }
-
-    $('#videoSections').html(html);
-  } catch (err) {
-    console.error("❌ Không thể tải video:", err);
+          </div>
+        </div>`;
+    });
+    html += `</div></div>`;
   }
-}
 
+  $('#videoSections').html(html);
+
+  setTimeout(() => {
+    document.querySelectorAll('.video-container video').forEach(video => {
+      video.addEventListener('mouseenter', () => video.play());
+      video.addEventListener('mouseleave', () => {
+        video.pause();
+        video.currentTime = 0;
+      });
+    });
+  }, 100);
+}
 
 $(document).ready(function () {
   loadVideos();
@@ -185,16 +191,6 @@ $(document).ready(function () {
       return;
     }
     videosData.unshift({ name, link, group });
-    // Gửi dữ liệu đến PHP để lưu vào videos.json
-    fetch('save_video.php', {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, link, group })
-    }).then(res => res.text()).then(text => {
-      console.log("PHP response:", text);
-    }).catch(err => {
-      console.error("❌ Lỗi gửi PHP:", err);
-    });
     saveToLocalStorage();
     $('#videoName').val('');
     $('#videoLink').val('');
