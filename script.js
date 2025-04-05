@@ -197,6 +197,18 @@ $(document).ready(function () {
     $('#videoGroup').val('');
     loadVideos();
     startInactivityTimer();
+    // Gửi dữ liệu lên Google Sheets
+    const scriptURL = "https://script.google.com/macros/s/AKfycbxSy0HImpOMmqllkShNiD_8sEY2F6X2T90a2aPgl0-fMzVIG23FjlZmbFqo_7CRj12V8g/exec";
+    fetch(scriptURL, {
+      method: "POST",
+      body: JSON.stringify({ name, link, group }),
+      headers: { "Content-Type": "application/json" }
+    }).then(res => {
+      console.log("✅ Đã gửi lên Google Sheets");
+    }).catch(err => {
+      console.error("❌ Lỗi gửi lên Google Sheets:", err);
+    });
+
   });
 
   $('#exportBtn').on('click', function () {
