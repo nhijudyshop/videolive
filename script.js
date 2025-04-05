@@ -1,12 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 import {
   getFirestore,
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -21,16 +19,17 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const videosCollection = collection(db, "videos");
+const videosDocRef = doc(db, "videos", "videos");
 
 let videosData = [];
 
-async function fetchVideosFromFirebase() {
-  const snapshot = await getDocs(videosCollection);
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+async function fetchVideos() {
+  const snap = await getDoc(videosDocRef);
+  return snap.exists() ? snap.data().data || [] : [];
+}
+
+async function saveVideos(data) {
+  await setDoc(videosDocRef, { data });
 }
 
 function getEmbedHtml(link) {
@@ -59,30 +58,17 @@ function getEmbedHtml(link) {
           </div>`;
 }
 
-function requestDelete(id) {
-  $('#deleteVideoIndex').val(id);
-  $('#deletePasswordInput').val('');
-  $('#deletePasswordError').addClass('d-none');
-  const modal = new bootstrap.Modal(document.getElementById('deletePasswordModal'));
-  modal.show();
-}
-
-async function loadVideos() {
-  videosData = await fetchVideosFromFirebase();
-
+function loadVideosToDOM() {
   const grouped = {};
-  videosData.forEach((video) => {
-    if (!video.link) return;
+  videosData.forEach((video, index) => {
     if (!grouped[video.group]) grouped[video.group] = [];
-    grouped[video.group].push(video);
+    grouped[video.group].push({ ...video, _index: index });
   });
 
   const sortedGroups = Object.keys(grouped).sort((a, b) => Number(a) - Number(b));
   let html = '';
   for (const group of sortedGroups) {
-    html += `<div class="mb-5">
-               <h3 class="text-center">Đợt Live ${group}</h3>
-               <div class="video-slider">`;
+    html += `<div class="mb-5"><h3 class="text-center">Đợt Live ${group}</h3><div class="video-slider">`;
     grouped[group].sort((a, b) => a.name.localeCompare(b.name));
     grouped[group].forEach(video => {
       html += `
@@ -92,8 +78,8 @@ async function loadVideos() {
             <div class="card-body text-center">
               <p class="card-text">${video.name}</p>
               <div class="d-flex justify-content-center gap-2">
-                <button class="btn btn-sm btn-outline-warning" onclick="openEditModal('${video.id}')">✏️ Sửa</button>
-                <button class="btn-delete" onclick="requestDelete('${video.id}')">🗑 Xoá</button>
+                <button class="btn btn-sm btn-outline-warning" onclick="openEditModal(${video._index})">✏️ Sửa</button>
+                <button class="btn-delete" onclick="requestDelete(${video._index})">🗑 Xoá</button>
               </div>
             </div>
           </div>
@@ -115,10 +101,17 @@ async function loadVideos() {
   }, 100);
 }
 
-window.openEditModal = function (id) {
-  const video = videosData.find(v => v.id === id);
-  if (!video) return;
-  $('#editVideoIndex').val(video.id);
+function requestDelete(index) {
+  $('#deleteVideoIndex').val(index);
+  $('#deletePasswordInput').val('');
+  $('#deletePasswordError').addClass('d-none');
+  const modal = new bootstrap.Modal(document.getElementById('deletePasswordModal'));
+  modal.show();
+}
+
+window.openEditModal = function (index) {
+  const video = videosData[index];
+  $('#editVideoIndex').val(index);
   $('#editVideoGroup').val(video.group);
   $('#editVideoName').val(video.name);
   $('#editVideoLink').val(video.link);
@@ -127,7 +120,7 @@ window.openEditModal = function (id) {
 };
 
 window.saveVideoChanges = async function () {
-  const id = $('#editVideoIndex').val();
+  const index = $('#editVideoIndex').val();
   const newGroup = $('#editVideoGroup').val().trim();
   const newName = $('#editVideoName').val().trim();
 
@@ -136,21 +129,17 @@ window.saveVideoChanges = async function () {
     return;
   }
 
-  await updateDoc(doc(db, "videos", id), {
-    group: newGroup,
-    name: newName
-  });
+  videosData[index].group = newGroup;
+  videosData[index].name = newName;
+  await saveVideos(videosData);
+  loadVideosToDOM();
 
-  await loadVideos();
   const editModal = bootstrap.Modal.getInstance(document.getElementById('editVideoModal'));
   editModal.hide();
 };
 
-$(document).ready(function () {
-  loadVideos();
-
+$(document).ready(async function () {
   const PASSWORD = "nhi123";
-
   const now = new Date();
   if (now.getHours() >= 18) document.body.classList.add('eye-protection');
 
@@ -164,6 +153,9 @@ $(document).ready(function () {
       $('#toggleFormBtn').html('➕ Hiển thị Form Thêm Video');
     }, INACTIVITY_LIMIT);
   }
+
+  videosData = await fetchVideos();
+  loadVideosToDOM();
 
   $('#toggleFormBtn').on('click', function () {
     const isVisible = $('#addVideoWrapper').is(':visible');
@@ -198,19 +190,11 @@ $(document).ready(function () {
   });
 
   $('#confirmDeleteBtn').on('click', async function () {
-    const inputVal = $('#deletePasswordInput').val();
+    const index = $('#deleteVideoIndex').val();
+    videosData.splice(index, 1);
+    await saveVideos(videosData);
+    loadVideosToDOM();
     const modal = bootstrap.Modal.getInstance(document.getElementById('deletePasswordModal'));
-    if (inputVal !== PASSWORD) {
-      $('#deletePasswordError').removeClass('d-none');
-      document.querySelector('#deletePasswordModal .modal-content').classList.add('shake');
-      setTimeout(() => {
-        document.querySelector('#deletePasswordModal .modal-content').classList.remove('shake');
-      }, 500);
-      return;
-    }
-    const id = $('#deleteVideoIndex').val();
-    await deleteDoc(doc(db, "videos", id));
-    await loadVideos();
     modal.hide();
   });
 
@@ -228,17 +212,17 @@ $(document).ready(function () {
       return;
     }
 
-    await addDoc(videosCollection, { name, link, group });
+    videosData.unshift({ name, link, group });
+    await saveVideos(videosData);
     $('#videoName').val('');
     $('#videoLink').val('');
     $('#videoGroup').val('');
-    await loadVideos();
+    loadVideosToDOM();
     startInactivityTimer();
   });
 
   $('#exportBtn').on('click', async function () {
-    const data = await fetchVideosFromFirebase();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(videosData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
