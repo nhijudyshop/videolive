@@ -190,13 +190,28 @@ $(document).ready(async function () {
   });
 
   $('#confirmDeleteBtn').on('click', async function () {
-    const index = $('#deleteVideoIndex').val();
-    videosData.splice(index, 1);
-    await saveVideos(videosData);
-    loadVideosToDOM();
+    const inputVal = $('#deletePasswordInput').val();
     const modal = bootstrap.Modal.getInstance(document.getElementById('deletePasswordModal'));
+  
+    if (inputVal !== "nhi123") {
+      $('#deletePasswordError').removeClass('d-none');
+      document.querySelector('#deletePasswordModal .modal-content').classList.add('shake');
+      setTimeout(() => {
+        document.querySelector('#deletePasswordModal .modal-content').classList.remove('shake');
+      }, 500);
+      return;
+    }
+  
+    const index = parseInt($('#deleteVideoIndex').val());
+    if (!isNaN(index) && index >= 0 && index < videosData.length) {
+      videosData.splice(index, 1);
+      await saveVideos(videosData);
+      loadVideosToDOM();
+    }
+  
     modal.hide();
   });
+  
 
   $('#addVideoForm input').on('input', function () {
     startInactivityTimer();
@@ -230,4 +245,13 @@ $(document).ready(async function () {
     a.click();
     URL.revokeObjectURL(url);
   });
+
+  window.requestDelete = function (index) {
+    $('#deleteVideoIndex').val(index);
+    $('#deletePasswordInput').val('');
+    $('#deletePasswordError').addClass('d-none');
+    const modal = new bootstrap.Modal(document.getElementById('deletePasswordModal'));
+    modal.show();
+  };
+  
 });
