@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
   <meta charset="UTF-8">
   <title>🎥 VIDEO LIVE</title>
@@ -11,15 +10,14 @@
 </head>
 
 <body>
+
   <div class="container my-4">
     <h1 class="mb-4 text-center text-primary fw-bold">📺 Danh sách Video</h1>
-
-    <!-- NÚT ẨN / HIỂN FORM -->
+    <span id="liveClock" style="font-size: 16px; margin-left: 10px; vertical-align: middle;"></span>
     <div class="text-center mb-3">
       <button id="toggleFormBtn" class="btn btn-outline-secondary">➕ Hiển thị Form Thêm Video</button>
     </div>
 
-    <!-- FORM THÊM VIDEO ẨN -->
     <div id="addVideoWrapper" style="display: none;">
       <form id="addVideoForm" class="mb-4 p-4 border rounded bg-light shadow-sm">
         <h2 class="h5 fw-bold mb-4 text-center text-muted">
@@ -47,12 +45,21 @@
       </form>
     </div>
 
-    <!-- KHU VỰC HIỂN THỊ VIDEO -->
     <div class="d-flex justify-content-end mb-3">
       <button id="exportBtn" class="btn btn-outline-success">📥 Xuất Danh Sách</button>
     </div>
 
     <div id="videoSections"></div>
+  </div>
+
+  <!-- Toast -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050">
+    <div id="toast" class="toast align-items-center text-bg-success border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body" id="toastBody">🎉 Thành công!</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal mật khẩu -->
@@ -125,9 +132,6 @@
   </div>
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="script.js"></script>
   <script type="module" src="script.js"></script>
-
 </body>
-
 </html>

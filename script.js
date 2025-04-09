@@ -3,8 +3,7 @@ import {
   getFirestore,
   doc,
   getDoc,
-  setDoc,
-  updateDoc
+  setDoc
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -20,6 +19,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const videosDocRef = doc(db, "videos", "videos");
+const passwordDocRef = doc(db, "settings", "security");
 
 let videosData = [];
 
@@ -30,6 +30,20 @@ async function fetchVideos() {
 
 async function saveVideos(data) {
   await setDoc(videosDocRef, { data });
+}
+
+async function getPassword() {
+  const snap = await getDoc(passwordDocRef);
+  return snap.exists() ? snap.data().password : null;
+}
+
+function showToast(message, type = 'success') {
+  const toastEl = document.getElementById('toast');
+  toastEl.classList.remove('text-bg-success', 'text-bg-danger');
+  toastEl.classList.add(`text-bg-${type}`);
+  document.getElementById('toastBody').textContent = message;
+  const toast = new bootstrap.Toast(toastEl);
+  toast.show();
 }
 
 function getEmbedHtml(link) {
@@ -64,6 +78,11 @@ function loadVideosToDOM() {
     if (!grouped[video.group]) grouped[video.group] = [];
     grouped[video.group].push({ ...video, _index: index });
   });
+
+  if (videosData.length === 0) {
+    $('#videoSections').html('<div class="text-center text-muted mt-4">🚫 Chưa có video nào!</div>');
+    return;
+  }
 
   const sortedGroups = Object.keys(grouped).sort((a, b) => Number(a) - Number(b));
   let html = '';
@@ -101,14 +120,6 @@ function loadVideosToDOM() {
   }, 100);
 }
 
-function requestDelete(index) {
-  $('#deleteVideoIndex').val(index);
-  $('#deletePasswordInput').val('');
-  $('#deletePasswordError').addClass('d-none');
-  const modal = new bootstrap.Modal(document.getElementById('deletePasswordModal'));
-  modal.show();
-}
-
 window.openEditModal = function (index) {
   const video = videosData[index];
   $('#editVideoIndex').val(index);
@@ -133,31 +144,44 @@ window.saveVideoChanges = async function () {
   videosData[index].name = newName;
   await saveVideos(videosData);
   loadVideosToDOM();
+  showToast("💾 Đã lưu thay đổi!");
 
   const editModal = bootstrap.Modal.getInstance(document.getElementById('editVideoModal'));
   editModal.hide();
 };
 
+window.requestDelete = function (index) {
+  $('#deleteVideoIndex').val(index);
+  $('#deletePasswordInput').val('');
+  $('#deletePasswordError').addClass('d-none');
+  const modal = new bootstrap.Modal(document.getElementById('deletePasswordModal'));
+  modal.show();
+};
+
+
+// ⏱ DARK MODE TỰ ĐỘNG
+// 🌅 Nền chuyển màu theo giờ trong ngày
+function applyAutoDarkMode() {
+  const hour = new Date().getHours();
+  let bgColor = '#ffffff'; // default sáng
+
+  if (hour >= 5 && hour < 8) bgColor = '#FFF9C4';      // sáng sớm
+  else if (hour >= 8 && hour < 17) bgColor = '#ffffff'; // ban ngày
+  else if (hour >= 17 && hour < 19) bgColor = '#FFE0B2'; // hoàng hôn
+  else if (hour >= 19 && hour < 22) bgColor = '#263238'; // tối nhẹ
+  else bgColor = '#1c1c2a';                              // đêm khuya
+
+  document.body.style.backgroundColor = bgColor;
+}
+applyAutoDarkMode();
+setInterval(applyAutoDarkMode, 60 * 1000); // mỗi phút cập nhật 1 lần
+
 $(document).ready(async function () {
-  const PASSWORD = "nhi123";
-  const now = new Date();
-  if (now.getHours() >= 18) document.body.classList.add('eye-protection');
-
   let inactivityTimer;
-  // const INACTIVITY_LIMIT = 30 * 1000;
-
-  function startInactivityTimer() {
-    clearTimeout(inactivityTimer);
-    inactivityTimer = setTimeout(() => {
-      $('#addVideoWrapper').slideUp(200);
-      $('#toggleFormBtn').html('➕ Hiển thị Form Thêm Video');
-    }, INACTIVITY_LIMIT);
-  }
-
   videosData = await fetchVideos();
   loadVideosToDOM();
 
-  $('#toggleFormBtn').on('click', function () {
+  $('#toggleFormBtn').on('click', async function () {
     const isVisible = $('#addVideoWrapper').is(':visible');
     if (!window.formAllowed) {
       const modal = new bootstrap.Modal(document.getElementById('passwordModal'));
@@ -169,31 +193,35 @@ $(document).ready(async function () {
     const newState = !isVisible;
     $('#addVideoWrapper').slideToggle(200);
     $(this).html(newState ? '➖ Ẩn Form Thêm Video' : '➕ Hiển thị Form Thêm Video');
-    if (newState) startInactivityTimer();
+    if (newState) resetInactivityTimer();
   });
 
-  $('#confirmPasswordBtn').on('click', function () {
+  $('#confirmPasswordBtn').on('click', async function () {
     const inputVal = $('#passwordInput').val();
     const modal = bootstrap.Modal.getInstance(document.getElementById('passwordModal'));
     const modalContent = document.querySelector('#passwordModal .modal-content');
-    if (inputVal !== PASSWORD) {
+
+    const truePassword = await getPassword();
+    if (inputVal !== truePassword) {
       $('#passwordError').removeClass('d-none');
       modalContent.classList.add('shake');
       setTimeout(() => modalContent.classList.remove('shake'), 500);
       return;
     }
+
     window.formAllowed = true;
     $('#toggleFormBtn').html('➖ Ẩn Form Thêm Video');
     $('#addVideoWrapper').slideDown(200);
     modal.hide();
-    startInactivityTimer();
+    resetInactivityTimer();
   });
 
   $('#confirmDeleteBtn').on('click', async function () {
     const inputVal = $('#deletePasswordInput').val();
     const modal = bootstrap.Modal.getInstance(document.getElementById('deletePasswordModal'));
-  
-    if (inputVal !== "nhi123") {
+
+    const truePassword = await getPassword();
+    if (inputVal !== truePassword) {
       $('#deletePasswordError').removeClass('d-none');
       document.querySelector('#deletePasswordModal .modal-content').classList.add('shake');
       setTimeout(() => {
@@ -201,20 +229,20 @@ $(document).ready(async function () {
       }, 500);
       return;
     }
-  
+
     const index = parseInt($('#deleteVideoIndex').val());
     if (!isNaN(index) && index >= 0 && index < videosData.length) {
       videosData.splice(index, 1);
       await saveVideos(videosData);
       loadVideosToDOM();
+      showToast("🗑 Đã xoá video!", 'danger');
     }
-  
+
     modal.hide();
   });
-  
 
   $('#addVideoForm input').on('input', function () {
-    startInactivityTimer();
+    resetInactivityTimer();
   });
 
   $('#addVideoForm').on('submit', async function (e) {
@@ -233,7 +261,8 @@ $(document).ready(async function () {
     $('#videoLink').val('');
     $('#videoGroup').val('');
     loadVideosToDOM();
-    startInactivityTimer();
+    showToast("✅ Video đã được thêm!");
+    resetInactivityTimer();
   });
 
   $('#exportBtn').on('click', async function () {
@@ -246,21 +275,13 @@ $(document).ready(async function () {
     URL.revokeObjectURL(url);
   });
 
-  window.requestDelete = function (index) {
-    $('#deleteVideoIndex').val(index);
-    $('#deletePasswordInput').val('');
-    $('#deletePasswordError').addClass('d-none');
-    const modal = new bootstrap.Modal(document.getElementById('deletePasswordModal'));
-    modal.show();
-  };
-  
   $('#passwordInput').on('keydown', function (e) {
     if (e.key === 'Enter') {
       e.preventDefault();
       $('#confirmPasswordBtn').click();
     }
   });
-  
+
   $('#deletePasswordInput').on('keydown', function (e) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -268,24 +289,35 @@ $(document).ready(async function () {
     }
   });
 
-  // 🚨 Theo dõi hoạt động của người dùng (idle 90s sẽ auto ẩn + khóa form)
-const INACTIVITY_LIMIT = 90 * 1000;
+  $('#passwordModal').on('shown.bs.modal', function () {
+    $('#passwordInput').focus();
+  });
 
-function resetInactivityTimer() {
-  clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(() => {
-    $('#addVideoWrapper').slideUp(200);
-    $('#toggleFormBtn').html('➕ Hiển thị Form Thêm Video');
-    window.formAllowed = false;
-  }, INACTIVITY_LIMIT);
+  const INACTIVITY_LIMIT = 90 * 1000;
+  function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+      $('#addVideoWrapper').slideUp(200);
+      $('#toggleFormBtn').html('➕ Hiển thị Form Thêm Video');
+      window.formAllowed = false;
+    }, INACTIVITY_LIMIT);
+  }
+
+  $(document).on('mousemove keydown click scroll', () => {
+    if ($('#addVideoWrapper').is(':visible') && window.formAllowed) {
+      resetInactivityTimer();
+    }
+  });
+});
+
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours().toString().padStart(2, '0');
+  const m = now.getMinutes().toString().padStart(2, '0');
+  const s = now.getSeconds().toString().padStart(2, '0');
+  const timeStr = `${h}:${m}:${s}`;
+  document.getElementById("liveClock").textContent = timeStr;
 }
 
-// 👂 Reset lại timer mỗi khi có hành vi tương tác
-$(document).on('mousemove keydown click scroll', () => {
-  if ($('#addVideoWrapper').is(':visible') && window.formAllowed) {
-    resetInactivityTimer();
-  }
-});
-
-  
-});
+updateClock(); // gọi ngay để không trễ 1 giây
+setInterval(updateClock, 1000); // cập nhật mỗi giây

@@ -243,3 +243,22 @@ h3 {
   color: #212529 !important;
   border: 1px solid #ced4da !important;
 }
+
+body {
+  transition: background-color 1s ease;
+}
+
+/* style.css – thêm vào cuối */
+#liveClock {
+  position: fixed;
+  top: 15px;
+  right: 20px;
+  padding: 6px 12px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  border-radius: 6px;
+  z-index: 9999;
+  box-shadow: 0 0 5px rgba(0,0,0,0.3);
+}
