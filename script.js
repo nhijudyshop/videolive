@@ -84,7 +84,8 @@ function loadVideosToDOM() {
     return;
   }
 
-  const sortedGroups = Object.keys(grouped).sort((a, b) => Number(a) - Number(b));
+  const sortedGroups = Object.keys(grouped).sort((a, b) => Number(b) - Number(a));
+
   let html = '';
   for (const group of sortedGroups) {
     html += `<div class="mb-5"><h3 class="text-center">Đợt Live ${group}</h3><div class="video-slider">`;
